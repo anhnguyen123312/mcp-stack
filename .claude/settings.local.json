@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(helm package:*)",
+      "Bash(gh release create:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git tag:*)",
+      "Bash(mkdir:*)",
+      "Bash(chmod:*)",
+      "Bash(gh run list:*)"
+    ]
+  }
+}

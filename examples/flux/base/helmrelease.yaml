@@ -1,0 +1,23 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: mcp-stack
+  namespace: flux-system
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm-mcp-stack
+      sourceRef:
+        kind: GitRepository
+        name: infra-repo
+        namespace: flux-system
+      interval: 1m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  # Values will be overridden by environment-specific patches
+  values: {}

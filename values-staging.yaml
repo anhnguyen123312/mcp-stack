@@ -1,0 +1,114 @@
+# Staging environment overrides
+global:
+  environment: staging
+  domain: example.com
+  
+  image:
+    pullPolicy: Always  # Always pull latest for staging
+  
+  versioning:
+    strategy: tag  # Use tags for staging
+  
+  infisical:
+    projectSlug: trueprofit
+  
+  ingress:
+    className: nginx-staging
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-staging
+  
+  storage:
+    className: standard
+  
+  autoscaling:
+    enabled: false  # Disable HPA in staging
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Services configuration for staging
+mcp:
+  mongo:
+    enabled: true
+    
+    image:
+      tag: v1
+    
+    replicas: 1
+    
+    autoscaling:
+      enabled: false
+    
+    secret:
+      store:
+        environmentSlug: staging
+        secretsPath: /mongo-staging
+    
+    persistence:
+      size: 5Gi
+      storageClassName: standard
+    
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+  
+  api-service:
+    enabled: true
+    
+    image:
+      tag: develop  # Use develop branch for staging
+    
+    replicas: 1
+    
+    autoscaling:
+      enabled: false
+    
+    secret:
+      store:
+        environmentSlug: staging
+        secretsPath: /api-staging
+    
+    env:
+      env:
+        - name: NODE_ENV
+          value: "staging"
+        - name: LOG_LEVEL
+          value: "debug"
+    
+    ingress:
+      enabled: true
+      annotations:
+        nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  
+  redis:
+    enabled: true
+    
+    replicas: 1
+    
+    persistence:
+      size: 2Gi
+    
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi

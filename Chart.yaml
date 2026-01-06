@@ -1,0 +1,14 @@
+apiVersion: v2
+name: mcp-stack
+description: A Helm chart for deploying multiple MCP services with Infisical secrets
+type: application
+version: 1.0.1
+appVersion: "1.0.1"
+keywords:
+  - mcp
+  - microservices
+  - infisical
+  - secrets
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com

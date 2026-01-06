@@ -1,0 +1,115 @@
+name: Release Helm Chart
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.14.0
+
+      - name: Get chart version
+        id: chart_info
+        run: |
+          CHART_VERSION=$(grep '^version:' Chart.yaml | awk '{print $2}')
+          CHART_NAME=$(grep '^name:' Chart.yaml | awk '{print $2}')
+          echo "version=$CHART_VERSION" >> $GITHUB_OUTPUT
+          echo "name=$CHART_NAME" >> $GITHUB_OUTPUT
+
+      - name: Package Helm Chart
+        run: |
+          helm package .
+
+      - name: Setup GitHub Pages for Helm Repository
+        run: |
+          # Create docs directory for GitHub Pages
+          mkdir -p docs
+
+          # Download all existing charts from releases
+          mkdir -p charts-download
+          gh release list --json tagName --jq '.[].tagName' | while read tag; do
+            if [ -n "$tag" ]; then
+              echo "Downloading assets from $tag"
+              gh release download "$tag" --dir charts-download --pattern "*.tgz" || true
+            fi
+          done
+
+          # Copy all chart packages to docs
+          cp -f charts-download/*.tgz docs/ 2>/dev/null || true
+          cp -f *.tgz docs/ 2>/dev/null || true
+
+          # Generate index.yaml
+          helm repo index docs --url https://anhnguyen123312.github.io/mcp-stack
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          publish_branch: gh-pages
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHART_VERSION: ${{ steps.chart_info.outputs.version }}
+          CHART_NAME: ${{ steps.chart_info.outputs.name }}
+        run: |
+          gh release create ${GITHUB_REF#refs/tags/} \
+            $CHART_NAME-*.tgz \
+            --title "$CHART_NAME ${GITHUB_REF#refs/tags/}" \
+            --notes "Release $CHART_NAME Helm chart ${GITHUB_REF#refs/tags/}
+
+          ## Installation
+
+          \`\`\`bash
+          # Add Helm repository
+          helm repo add mcp-stack https://anhnguyen123312.github.io/mcp-stack
+          helm repo update
+
+          # Install
+          helm install my-mcp mcp-stack/mcp-stack --version ${GITHUB_REF#refs/tags/v}
+          \`\`\`
+
+          ## Quick Start
+
+          \`\`\`bash
+          # Install with default values
+          helm install my-mcp mcp-stack/mcp-stack --version ${GITHUB_REF#refs/tags/v}
+
+          # Install with custom values
+          helm install my-mcp mcp-stack/mcp-stack --version ${GITHUB_REF#refs/tags/v} -f values.yaml
+
+          # Upgrade existing installation
+          helm upgrade my-mcp mcp-stack/mcp-stack --version ${GITHUB_REF#refs/tags/v}
+          \`\`\`
+
+          ## Chart Values
+
+          View default values:
+          \`\`\`bash
+          helm show values mcp-stack/mcp-stack --version ${GITHUB_REF#refs/tags/v}
+          \`\`\`
+
+          ---
+          **Repository:** https://anhnguyen123312.github.io/mcp-stack"
