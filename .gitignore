@@ -1,0 +1,20 @@
+# Helm
+*.tgz
+Chart.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
+
+# Local testing
+local-values.yaml
+test-values.yaml

@@ -1,0 +1,50 @@
+{{- range $name, $mcp := .Values.mcp }}
+{{- if and $mcp.enabled $mcp.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Values.global.namespace }}
+  labels:
+    {{- include "mcp.labels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+    component: ingress
+    {{- with $mcp.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with $.Values.global.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if $mcp.ingress.sse }}
+    # SSE/MCP Server specific annotations
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    {{- end }}
+    {{- with $mcp.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ include "mcp.ingressClassName" (dict "service" $mcp "global" $.Values.global) }}
+  {{- if or $.Values.global.ingress.tls.enabled $mcp.ingress.tls }}
+  tls:
+    - hosts:
+        - {{ include "mcp.ingressHost" (dict "name" $name "service" $mcp "global" $.Values.global) }}
+      secretName: {{ $name }}-tls
+  {{- end }}
+  rules:
+    - host: {{ include "mcp.ingressHost" (dict "name" $name "service" $mcp "global" $.Values.global) }}
+      http:
+        paths:
+          - path: {{ $mcp.ingress.path | default "/" }}
+            pathType: {{ $mcp.ingress.pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ $name }}
+                port:
+                  number: {{ $mcp.service.port }}
+{{- end }}
+{{- end }}

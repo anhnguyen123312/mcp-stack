@@ -1,0 +1,547 @@
+# ============================================
+# GLOBAL CONFIGURATIONS
+# ============================================
+global:
+  # Namespace for secrets management
+  namespace: mcp-secrets
+  
+  # Domain configuration
+  domain: example.com
+  
+  # Environment: staging, production, review
+  environment: staging
+  
+  # Image defaults
+  image:
+    registry: registry.example.com
+    pullPolicy: IfNotPresent
+    pullSecrets:
+      - name: docker-registry-secret
+  
+  # Versioning strategy: tag | digest | semver
+  versioning:
+    strategy: tag
+  
+  # Default port for MCP servers (can be overridden per MCP)
+  defaultPort: 8000
+  
+  # Infisical configuration
+  infisical:
+    hostAPI: https://infisical.example.com
+    
+    # Authentication credentials
+    authCredentials:
+      namespace: mcp-secrets
+      name: infisical-credentials
+    
+    # Project configuration
+    projectSlug: my-project
+    
+    # Default SecretStore settings
+    store:
+      refreshInterval: 3600
+    
+    # Default ExternalSecret settings
+    externalSecret:
+      refreshInterval: 1m
+  
+  # Ingress defaults
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    tls:
+      enabled: true
+      clusterIssuer: letsencrypt-prod
+  
+  # Storage defaults
+  storage:
+    className: standard
+  
+  # Health check defaults
+  probes:
+    liveness:
+      enabled: true
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 3
+    
+    readiness:
+      enabled: true
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      timeoutSeconds: 3
+      successThreshold: 1
+      failureThreshold: 3
+    
+    startup:
+      enabled: false
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      timeoutSeconds: 3
+      successThreshold: 1
+      failureThreshold: 30
+  
+  # HPA defaults
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+    behavior: {}
+  
+  # Resource defaults
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ============================================
+# MCP SERVERS
+# ============================================
+mcp:
+  # Example MongoDB service
+  mongo:
+    enabled: false
+    
+    # Image configuration
+    image:
+      repository: mcp/mongo
+      tag: v1
+      pullPolicy: IfNotPresent
+      # registry: custom-registry.example.com  # Override global registry if needed
+    
+    # Port configuration (uses global.defaultPort if not specified)
+    port: 27017
+    
+    # Replicas (ignored if autoscaling enabled)
+    replicas: 1
+    
+    # Autoscaling configuration
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 70
+        - type: Resource
+          resource:
+            name: memory
+            target:
+              type: Utilization
+              averageUtilization: 80
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 50
+              periodSeconds: 60
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 30
+    
+    # Health check probes
+    probes:
+      liveness:
+        enabled: true
+        tcpSocket:
+          port: 27017
+        initialDelaySeconds: 60
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+      
+      readiness:
+        enabled: true
+        tcpSocket:
+          port: 27017
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        timeoutSeconds: 3
+        failureThreshold: 3
+      
+      startup:
+        enabled: true
+        tcpSocket:
+          port: 27017
+        initialDelaySeconds: 0
+        periodSeconds: 10
+        failureThreshold: 30
+    
+    # Secret configuration
+    secret:
+      create: true
+      
+      # SecretStore configuration
+      store:
+        name: ""  # Auto-generated if empty
+        environmentSlug: ""  # Uses global.environment if empty
+        secretsPath: /mongo
+        recursive: true
+        expandSecretReferences: true
+      
+      # ExternalSecret configuration
+      externalSecret:
+        name: ""  # Auto-generated if empty
+        targetSecretName: mongo-secret
+      
+      # Or use existing secret
+      # secretRef:
+      #   name: existing-secret
+      #   namespace: mcp-secrets
+    
+    # Environment variables
+    env:
+      envFrom:
+        - secretRef:
+            name: mongo-secret
+      env: []
+    
+    # Command and arguments
+    command: ["mongod"]
+    args:
+      - "--dbpath"
+      - "/data/db"
+      - "--bind_ip_all"
+    
+    # Persistence configuration
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClassName: ""  # Uses global.storage.className if empty
+      mountPath: /data/db
+      accessModes:
+        - ReadWriteOnce
+    
+    # Service configuration
+    service:
+      type: ClusterIP
+      port: 27017
+      targetPort: 27017
+      annotations: {}
+    
+    # Ingress configuration
+    ingress:
+      enabled: false
+      className: ""  # Uses global.ingress.className if empty
+      host: ""  # Auto-generated if empty
+      path: /
+      pathType: Prefix
+      annotations: {}
+      tls: true
+    
+    # Resource limits
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    
+    # Additional labels
+    labels: {}
+    
+    # Additional annotations
+    annotations: {}
+  
+  # Example API service
+  api-service:
+    enabled: false
+    
+    image:
+      repository: myapp/api
+      tag: latest
+      # registry: custom-registry.example.com  # Override global registry if needed
+    
+    port: 8080
+    
+    replicas: 3
+    
+    autoscaling:
+      enabled: false
+      minReplicas: 3
+      maxReplicas: 20
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 70
+        - type: Resource
+          resource:
+            name: memory
+            target:
+              type: Utilization
+              averageUtilization: 80
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 25
+              periodSeconds: 60
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 50
+              periodSeconds: 30
+            - type: Pods
+              value: 4
+              periodSeconds: 30
+          selectPolicy: Max
+    
+    probes:
+      liveness:
+        enabled: true
+        httpGet:
+          path: /healthz
+          port: 8080
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+      
+      readiness:
+        enabled: true
+        httpGet:
+          path: /ready
+          port: 8080
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        timeoutSeconds: 3
+        failureThreshold: 2
+      
+      startup:
+        enabled: true
+        httpGet:
+          path: /startup
+          port: 8080
+        initialDelaySeconds: 0
+        periodSeconds: 5
+        failureThreshold: 60
+    
+    secret:
+      create: true
+      store:
+        secretsPath: /api
+      externalSecret:
+        targetSecretName: api-secret
+    
+    env:
+      envFrom:
+        - secretRef:
+            name: api-secret
+      env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "8080"
+    
+    command: []
+    args: []
+    
+    persistence:
+      enabled: false
+    
+    service:
+      type: ClusterIP
+      port: 80
+      targetPort: 8080
+    
+    ingress:
+      enabled: true
+      annotations:
+        nginx.ingress.kubernetes.io/rate-limit: "1000"
+        nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+  
+  # Example Redis service
+  redis:
+    enabled: false
+    
+    image:
+      repository: redis
+      tag: 7-alpine
+      # registry: docker.io  # Override to use Docker Hub
+    
+    port: 6379
+    
+    replicas: 1
+    
+    autoscaling:
+      enabled: false
+    
+    probes:
+      liveness:
+        enabled: true
+        tcpSocket:
+          port: 6379
+        initialDelaySeconds: 30
+        periodSeconds: 10
+      
+      readiness:
+        enabled: true
+        tcpSocket:
+          port: 6379
+        initialDelaySeconds: 5
+        periodSeconds: 5
+    
+    secret:
+      create: false
+      secretRef:
+        name: shared-redis-secret
+        namespace: mcp-secrets
+    
+    env:
+      envFrom:
+        - secretRef:
+            name: shared-redis-secret
+      env: []
+    
+    command: ["redis-server"]
+    args:
+      - "--appendonly"
+      - "yes"
+    
+    persistence:
+      enabled: true
+      size: 5Gi
+      mountPath: /data
+    
+    service:
+      type: ClusterIP
+      port: 6379
+      targetPort: 6379
+    
+    ingress:
+      enabled: false
+    
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  
+  # Example MCP Server (SSE/HTTP)
+  mcp-server:
+    enabled: false
+    
+    image:
+      repository: mcp/custom-server
+      tag: latest
+      # registry: ghcr.io  # Override to use GitHub Container Registry
+    
+    # Port (defaults to global.defaultPort: 8000 if not specified)
+    # port: 8000
+    
+    replicas: 2
+    
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 10
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 70
+    
+    probes:
+      liveness:
+        enabled: true
+        httpGet:
+          path: /health
+          port: 8000
+        initialDelaySeconds: 30
+        periodSeconds: 10
+      
+      readiness:
+        enabled: true
+        httpGet:
+          path: /health
+          port: 8000
+        initialDelaySeconds: 5
+        periodSeconds: 5
+      
+      startup:
+        enabled: true
+        httpGet:
+          path: /health
+          port: 8000
+        failureThreshold: 30
+    
+    secret:
+      create: true
+      store:
+        secretsPath: /mcp-server
+      externalSecret:
+        targetSecretName: mcp-server-secret
+    
+    env:
+      envFrom:
+        - secretRef:
+            name: mcp-server-secret
+      env:
+        - name: MCP_SERVER_PORT
+          value: "8000"
+        - name: LOG_LEVEL
+          value: "info"
+    
+    command: []
+    args: []
+    
+    persistence:
+      enabled: false
+    
+    service:
+      type: ClusterIP
+      port: 8000
+      targetPort: 8000
+      portName: http
+      protocol: TCP
+    
+    ingress:
+      enabled: true
+      sse: true  # Enable SSE-specific annotations
+      path: /
+      pathType: Prefix
+      annotations:
+        nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi

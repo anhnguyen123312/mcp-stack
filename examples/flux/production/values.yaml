@@ -1,0 +1,329 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: mcp-stack
+spec:
+  values:
+    global:
+      namespace: mcp-secrets
+      domain: example.com
+      environment: production
+      
+      image:
+        registry: registry.example.com
+        pullPolicy: IfNotPresent
+      
+      versioning:
+        strategy: digest  # Use immutable digests in production
+      
+      infisical:
+        hostAPI: https://infisical.example.com
+        projectSlug: my-project
+        authCredentials:
+          namespace: mcp-secrets
+          name: infisical-credentials
+      
+      ingress:
+        enabled: true
+        className: nginx-production
+        annotations:
+          cert-manager.io/cluster-issuer: letsencrypt-prod
+          nginx.ingress.kubernetes.io/ssl-redirect: "true"
+          nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+        tls:
+          enabled: true
+          clusterIssuer: letsencrypt-prod
+      
+      storage:
+        className: premium-ssd
+      
+      autoscaling:
+        enabled: true
+      
+      probes:
+        readiness:
+          failureThreshold: 1  # Stricter in production
+    
+    mcp:
+      # MongoDB for production
+      mongo:
+        enabled: true
+        
+        image:
+          repository: mongo
+          # Use digest for immutability
+          digest: sha256:e1e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3
+        
+        port: 27017
+        replicas: 3  # HA setup
+        
+        autoscaling:
+          enabled: false  # Stateful services shouldn't autoscale
+        
+        probes:
+          liveness:
+            enabled: true
+            tcpSocket:
+              port: 27017
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            failureThreshold: 5
+          
+          readiness:
+            enabled: true
+            tcpSocket:
+              port: 27017
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 2
+          
+          startup:
+            enabled: true
+            tcpSocket:
+              port: 27017
+            failureThreshold: 60
+        
+        secret:
+          create: true
+          store:
+            environmentSlug: production
+            secretsPath: /mongo-production
+          externalSecret:
+            targetSecretName: mongo-secret-production
+        
+        env:
+          envFrom:
+            - secretRef:
+                name: mongo-secret-production
+        
+        command: ["mongod"]
+        args:
+          - "--dbpath"
+          - "/data/db"
+          - "--bind_ip_all"
+          - "--replSet"
+          - "rs0"
+        
+        persistence:
+          enabled: true
+          size: 100Gi
+          storageClassName: premium-ssd
+          mountPath: /data/db
+        
+        service:
+          type: ClusterIP
+          port: 27017
+        
+        ingress:
+          enabled: false
+        
+        resources:
+          requests:
+            cpu: 2000m
+            memory: 8Gi
+          limits:
+            cpu: 4000m
+            memory: 16Gi
+        
+        labels:
+          backup: "enabled"
+          monitoring: "critical"
+      
+      # API Service for production
+      api-service:
+        enabled: true
+        
+        image:
+          repository: myapp/api
+          # Use digest for immutability and rollback safety
+          digest: sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1
+        
+        port: 8080
+        replicas: 5  # Ignored when HPA is enabled
+        
+        autoscaling:
+          enabled: true
+          minReplicas: 5
+          maxReplicas: 50
+          metrics:
+            - type: Resource
+              resource:
+                name: cpu
+                target:
+                  type: Utilization
+                  averageUtilization: 65
+            - type: Resource
+              resource:
+                name: memory
+                target:
+                  type: Utilization
+                  averageUtilization: 75
+          behavior:
+            scaleDown:
+              stabilizationWindowSeconds: 600  # 10 minutes
+              policies:
+                - type: Percent
+                  value: 10  # Scale down max 10% at a time
+                  periodSeconds: 60
+            scaleUp:
+              stabilizationWindowSeconds: 30
+              policies:
+                - type: Percent
+                  value: 50  # Scale up max 50% at a time
+                  periodSeconds: 30
+                - type: Pods
+                  value: 5  # Or add 5 pods at a time
+                  periodSeconds: 30
+              selectPolicy: Max
+        
+        probes:
+          liveness:
+            enabled: true
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 5
+          
+          readiness:
+            enabled: true
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 3
+            failureThreshold: 1
+          
+          startup:
+            enabled: true
+            httpGet:
+              path: /startup
+              port: 8080
+            failureThreshold: 90
+        
+        secret:
+          create: true
+          store:
+            environmentSlug: production
+            secretsPath: /api-production
+          externalSecret:
+            targetSecretName: api-secret-production
+        
+        env:
+          envFrom:
+            - secretRef:
+                name: api-secret-production
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: PORT
+              value: "8080"
+        
+        persistence:
+          enabled: false
+        
+        service:
+          type: ClusterIP
+          port: 80
+          targetPort: 8080
+        
+        ingress:
+          enabled: true
+          annotations:
+            nginx.ingress.kubernetes.io/rate-limit: "5000"
+            nginx.ingress.kubernetes.io/ssl-redirect: "true"
+            nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+            nginx.ingress.kubernetes.io/enable-cors: "true"
+        
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+        
+        labels:
+          monitoring: "critical"
+          pagerduty: "enabled"
+      
+      # Redis for production
+      redis:
+        enabled: true
+        
+        image:
+          repository: redis
+          digest: sha256:b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2
+        
+        port: 6379
+        replicas: 3  # HA setup with sentinel
+        
+        autoscaling:
+          enabled: false
+        
+        probes:
+          liveness:
+            enabled: true
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 5
+          
+          readiness:
+            enabled: true
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 2
+        
+        secret:
+          create: true
+          store:
+            environmentSlug: production
+            secretsPath: /redis-production
+          externalSecret:
+            targetSecretName: redis-secret-production
+        
+        env:
+          envFrom:
+            - secretRef:
+                name: redis-secret-production
+        
+        command: ["redis-server"]
+        args:
+          - "--appendonly"
+          - "yes"
+          - "--maxmemory"
+          - "2gb"
+          - "--maxmemory-policy"
+          - "allkeys-lru"
+        
+        persistence:
+          enabled: true
+          size: 20Gi
+          storageClassName: premium-ssd
+          mountPath: /data
+        
+        service:
+          type: ClusterIP
+          port: 6379
+        
+        ingress:
+          enabled: false
+        
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        
+        labels:
+          backup: "enabled"
+          monitoring: "high"
