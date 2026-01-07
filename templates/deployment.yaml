@@ -79,7 +79,7 @@ spec:
             {{- include "mcp.probe" (dict "default" $.Values.global.probes.startup "override" $mcp.probes.startup) | nindent 12 }}
           {{- end }}
           resources:
-            {{- include "mcp.resources" (dict "global" $.Values.global "service" $service) | nindent 12 }}
+            {{- include "mcp.resources" (dict "global" $.Values.global "service" $mcp) | nindent 12 }}
           {{- if $mcp.persistence.enabled }}
           volumeMounts:
             - name: data

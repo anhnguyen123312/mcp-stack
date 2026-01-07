@@ -9,7 +9,12 @@
       "Bash(git tag:*)",
       "Bash(mkdir:*)",
       "Bash(chmod:*)",
-      "Bash(gh run list:*)"
+      "Bash(gh run list:*)",
+      "Bash(gh repo view:*)",
+      "Bash(curl:*)",
+      "Bash(gh api:*)",
+      "Bash(gh run view:*)",
+      "Bash(helm template:*)"
     ]
   }
 }
