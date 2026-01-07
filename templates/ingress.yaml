@@ -33,7 +33,11 @@ spec:
   tls:
     - hosts:
         - {{ include "mcp.ingressHost" (dict "name" $name "mcp" $mcp "global" $.Values.global) }}
-      secretName: {{ $name }}-tls
+      {{- if and (kindIs "map" $mcp.ingress.tls) $mcp.ingress.tls.secretName }}
+      secretName: {{ $mcp.ingress.tls.secretName }}
+      {{- else if and $.Values.global.ingress.tls.enabled $.Values.global.ingress.tls.secretName }}
+      secretName: {{ $.Values.global.ingress.tls.secretName }}
+      {{- end }}
   {{- end }}
   rules:
     - host: {{ include "mcp.ingressHost" (dict "name" $name "mcp" $mcp "global" $.Values.global) }}

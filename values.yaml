@@ -50,10 +50,9 @@ global:
     enabled: true
     className: nginx
     annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
     tls:
       enabled: true
-      clusterIssuer: letsencrypt-prod
+      secretName: test-tls-wildcard
   
   # Storage defaults
   storage:
