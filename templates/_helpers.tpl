@@ -33,7 +33,6 @@ Common labels
 */}}
 {{- define "mcp.labels" -}}
 helm.sh/chart: {{ include "mcp.chart" . }}
-{{ include "mcp.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
