@@ -2,10 +2,10 @@ apiVersion: v1
 entries:
   mcp-stack:
   - apiVersion: v2
-    appVersion: 1.0.8
-    created: "2026-01-07T06:50:32.338427941Z"
+    appVersion: 1.1.1
+    created: "2026-01-07T08:16:46.365329876Z"
     description: A Helm chart for deploying multiple MCP services with Infisical secrets
-    digest: f16b53f2ed06e3e9e61d6f67ce0e5a60b7838efe451ba4e3147b32b3a7fdad33
+    digest: 9113b9de7d064df3624d52341c74ad0301be00f6228481ccf867c0b3172d041f
     keywords:
     - mcp
     - microservices
@@ -17,6 +17,6 @@ entries:
     name: mcp-stack
     type: application
     urls:
-    - https://anhnguyen123312.github.io/mcp-stack/mcp-stack-1.1.0.tgz
-    version: 1.1.0
-generated: "2026-01-07T06:50:32.336499343Z"
+    - https://anhnguyen123312.github.io/mcp-stack/mcp-stack-1.1.1.tgz
+    version: 1.1.1
+generated: "2026-01-07T08:16:46.36347032Z"
