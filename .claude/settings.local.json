@@ -14,7 +14,17 @@
       "Bash(curl:*)",
       "Bash(gh api:*)",
       "Bash(gh run view:*)",
-      "Bash(helm template:*)"
+      "Bash(helm template:*)",
+      "Bash(helm repo update:*)",
+      "Bash(helm repo add:*)",
+      "Bash(helm search repo:*)",
+      "Bash(helm lint:*)",
+      "Bash(yq eval:*)",
+      "Bash(python3:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(git restore:*)"
     ]
   }
 }
