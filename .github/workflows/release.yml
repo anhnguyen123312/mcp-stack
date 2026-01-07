@@ -37,6 +37,13 @@ jobs:
           echo "version=$CHART_VERSION" >> $GITHUB_OUTPUT
           echo "name=$CHART_NAME" >> $GITHUB_OUTPUT
 
+      - name: Lint and validate Helm Chart
+        run: |
+          echo "Running helm lint..."
+          helm lint .
+          echo "Running helm template validation..."
+          helm template test . --debug
+
       - name: Package Helm Chart
         run: |
           helm package .
