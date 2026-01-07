@@ -2,8 +2,8 @@ apiVersion: v2
 name: mcp-stack
 description: A Helm chart for deploying multiple MCP services with Infisical secrets
 type: application
-version: 1.0.1
-appVersion: "1.0.1"
+version: 1.0.2
+appVersion: "1.0.2"
 keywords:
   - mcp
   - microservices
