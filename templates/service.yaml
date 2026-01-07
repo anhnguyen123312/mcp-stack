@@ -1,5 +1,7 @@
 {{- range $name, $mcp := .Values.mcp }}
 {{- if $mcp.enabled }}
+{{- $serviceConfig := default $.Values.global.service $mcp.service }}
+{{- $hasService := and $mcp.service (kindIs "map" $mcp.service) }}
 ---
 apiVersion: v1
 kind: Service
@@ -13,20 +15,20 @@ metadata:
     {{- with $mcp.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- with $mcp.service.annotations }}
+  {{- if and $hasService $mcp.service.annotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
+    {{- toYaml $mcp.service.annotations | nindent 4 }}
   {{- end }}
 spec:
-  type: {{ $mcp.service.type | default "ClusterIP" }}
-  {{- if $mcp.service.sessionAffinity }}
+  type: {{ $serviceConfig.type | default "ClusterIP" }}
+  {{- if and $hasService $mcp.service.sessionAffinity }}
   sessionAffinity: {{ $mcp.service.sessionAffinity }}
   {{- end }}
   ports:
-    - port: {{ $mcp.service.port }}
-      targetPort: {{ $mcp.service.targetPort | default (include "mcp.port" (dict "mcp" $mcp "global" $.Values.global)) }}
-      protocol: {{ $mcp.service.protocol | default "TCP" }}
-      name: {{ $mcp.service.portName | default "http" }}
+    - port: {{ if $hasService }}{{ $mcp.service.port }}{{ else }}{{ $serviceConfig.port | default 80 }}{{ end }}
+      targetPort: {{ if $hasService }}{{ $mcp.service.targetPort | default (include "mcp.port" (dict "mcp" $mcp "global" $.Values.global)) }}{{ else }}{{ include "mcp.port" (dict "mcp" $mcp "global" $.Values.global) }}{{ end }}
+      protocol: {{ if $hasService }}{{ $mcp.service.protocol | default "TCP" }}{{ else }}TCP{{ end }}
+      name: {{ if $hasService }}{{ $mcp.service.portName | default "http" }}{{ else }}http{{ end }}
   selector:
     {{- include "mcp.selectorLabels" (dict "name" $name "Release" $.Release) | nindent 4 }}
 {{- end }}

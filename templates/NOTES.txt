@@ -14,15 +14,15 @@ DEPLOYED MCP SERVERS:
 {{- if $mcp.enabled }}
 
 📦 {{ $name | upper }}
-   ├─ Image: {{ include "mcp.image" (dict "global" $.Values.global "service" $mcp) }}
-   ├─ Replicas: {{ if $mcp.autoscaling.enabled }}{{ $mcp.autoscaling.minReplicas }}-{{ $mcp.autoscaling.maxReplicas }} (HPA){{ else }}{{ $mcp.replicas | default 1 }}{{ end }}
-   {{- if $mcp.ingress.enabled }}
-   ├─ URL: https://{{ include "mcp.ingressHost" (dict "name" $name "service" $mcp "global" $.Values.global) }}
+   ├─ Image: {{ include "mcp.image" (dict "global" $.Values.global "mcp" $mcp) }}
+   ├─ Replicas: {{ if and $mcp.autoscaling (kindIs "map" $mcp.autoscaling) $mcp.autoscaling.enabled }}{{ $mcp.autoscaling.minReplicas }}-{{ $mcp.autoscaling.maxReplicas }} (HPA){{ else }}{{ $mcp.replicas | default 1 }}{{ end }}
+   {{- if and $mcp.ingress (kindIs "map" $mcp.ingress) $mcp.ingress.enabled }}
+   ├─ URL: https://{{ include "mcp.ingressHost" (dict "name" $name "mcp" $mcp "global" $.Values.global) }}
    {{- end }}
-   {{- if $mcp.persistence.enabled }}
-   ├─ Storage: {{ $mcp.persistence.size }} ({{ include "mcp.storageClassName" (dict "service" $mcp "global" $.Values.global) }})
+   {{- if and $mcp.persistence (kindIs "map" $mcp.persistence) $mcp.persistence.enabled }}
+   ├─ Storage: {{ $mcp.persistence.size }} ({{ include "mcp.storageClassName" (dict "mcp" $mcp "global" $.Values.global) }})
    {{- end }}
-   └─ Secret: {{ if $mcp.secret.create }}{{ $mcp.secret.externalSecret.targetSecretName }}{{ else if $mcp.secret.secretRef }}{{ $mcp.secret.secretRef.name }}{{ else }}None{{ end }}
+   └─ Secret: {{ if and $mcp.secret (kindIs "map" $mcp.secret) $mcp.secret.create }}{{ $mcp.secret.externalSecret.targetSecretName }}{{ else if and $mcp.secret $mcp.secret.secretRef }}{{ $mcp.secret.secretRef.name }}{{ else }}None{{ end }}
 
 {{- end }}
 {{- end }}

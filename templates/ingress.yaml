@@ -1,5 +1,5 @@
 {{- range $name, $mcp := .Values.mcp }}
-{{- if and $mcp.enabled $mcp.ingress.enabled }}
+{{- if and $mcp.enabled $mcp.ingress (kindIs "map" $mcp.ingress) $mcp.ingress.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -28,15 +28,15 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  ingressClassName: {{ include "mcp.ingressClassName" (dict "service" $mcp "global" $.Values.global) }}
+  ingressClassName: {{ include "mcp.ingressClassName" (dict "mcp" $mcp "global" $.Values.global) }}
   {{- if or $.Values.global.ingress.tls.enabled $mcp.ingress.tls }}
   tls:
     - hosts:
-        - {{ include "mcp.ingressHost" (dict "name" $name "service" $mcp "global" $.Values.global) }}
+        - {{ include "mcp.ingressHost" (dict "name" $name "mcp" $mcp "global" $.Values.global) }}
       secretName: {{ $name }}-tls
   {{- end }}
   rules:
-    - host: {{ include "mcp.ingressHost" (dict "name" $name "service" $mcp "global" $.Values.global) }}
+    - host: {{ include "mcp.ingressHost" (dict "name" $name "mcp" $mcp "global" $.Values.global) }}
       http:
         paths:
           - path: {{ $mcp.ingress.path | default "/" }}

@@ -18,7 +18,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not $mcp.autoscaling.enabled }}
+  {{- if not (and $mcp.autoscaling (kindIs "map" $mcp.autoscaling) $mcp.autoscaling.enabled) }}
   replicas: {{ $mcp.replicas | default 1 }}
   {{- end }}
   selector:
@@ -66,26 +66,26 @@ spec:
             {{- toYaml $mcp.env.env | nindent 12 }}
           {{- end }}
           {{- end }}
-          {{- if $mcp.probes.liveness.enabled }}
+          {{- if and $mcp.probes $mcp.probes.liveness (kindIs "map" $mcp.probes.liveness) $mcp.probes.liveness.enabled }}
           livenessProbe:
             {{- include "mcp.probe" (dict "default" $.Values.global.probes.liveness "override" $mcp.probes.liveness) | nindent 12 }}
           {{- end }}
-          {{- if $mcp.probes.readiness.enabled }}
+          {{- if and $mcp.probes $mcp.probes.readiness (kindIs "map" $mcp.probes.readiness) $mcp.probes.readiness.enabled }}
           readinessProbe:
             {{- include "mcp.probe" (dict "default" $.Values.global.probes.readiness "override" $mcp.probes.readiness) | nindent 12 }}
           {{- end }}
-          {{- if $mcp.probes.startup.enabled }}
+          {{- if and $mcp.probes $mcp.probes.startup (kindIs "map" $mcp.probes.startup) $mcp.probes.startup.enabled }}
           startupProbe:
             {{- include "mcp.probe" (dict "default" $.Values.global.probes.startup "override" $mcp.probes.startup) | nindent 12 }}
           {{- end }}
           resources:
-            {{- include "mcp.resources" (dict "global" $.Values.global "service" $mcp) | nindent 12 }}
-          {{- if $mcp.persistence.enabled }}
+            {{- include "mcp.resources" (dict "global" $.Values.global "mcp" $mcp) | nindent 12 }}
+          {{- if and $mcp.persistence (kindIs "map" $mcp.persistence) $mcp.persistence.enabled }}
           volumeMounts:
             - name: data
               mountPath: {{ $mcp.persistence.mountPath }}
           {{- end }}
-      {{- if $mcp.persistence.enabled }}
+      {{- if and $mcp.persistence (kindIs "map" $mcp.persistence) $mcp.persistence.enabled }}
       volumes:
         - name: data
           persistentVolumeClaim:

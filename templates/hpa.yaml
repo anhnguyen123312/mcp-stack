@@ -1,5 +1,5 @@
 {{- range $name, $mcp := .Values.mcp }}
-{{- if and $mcp.enabled $mcp.autoscaling.enabled }}
+{{- if and $mcp.enabled $mcp.autoscaling (kindIs "map" $mcp.autoscaling) $mcp.autoscaling.enabled }}
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler

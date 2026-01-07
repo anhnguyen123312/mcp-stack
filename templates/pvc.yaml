@@ -1,5 +1,5 @@
 {{- range $name, $mcp := .Values.mcp }}
-{{- if and $mcp.enabled $mcp.persistence.enabled }}
+{{- if and $mcp.enabled $mcp.persistence (kindIs "map" $mcp.persistence) $mcp.persistence.enabled }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -27,7 +27,7 @@ spec:
   resources:
     requests:
       storage: {{ $mcp.persistence.size }}
-  {{- $storageClass := include "mcp.storageClassName" (dict "service" $mcp "global" $.Values.global) }}
+  {{- $storageClass := include "mcp.storageClassName" (dict "mcp" $mcp "global" $.Values.global) }}
   {{- if $storageClass }}
   storageClassName: {{ $storageClass }}
   {{- end }}

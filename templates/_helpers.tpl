@@ -89,7 +89,7 @@ Pattern: mcp-<name>.<env>.<domain> or mcp-<name>.<domain> for production
 Generate secret store name
 */}}
 {{- define "mcp.secretStoreName" -}}
-{{- if .mcp.secret.store.name }}
+{{- if and .mcp.secret .mcp.secret.store .mcp.secret.store.name }}
   {{- .mcp.secret.store.name -}}
 {{- else }}
   {{- printf "infisical-store-%s" .name -}}
@@ -100,7 +100,7 @@ Generate secret store name
 Generate external secret name
 */}}
 {{- define "mcp.externalSecretName" -}}
-{{- if .mcp.secret.externalSecret.name }}
+{{- if and .mcp.secret .mcp.secret.externalSecret .mcp.secret.externalSecret.name }}
   {{- .mcp.secret.externalSecret.name -}}
 {{- else }}
   {{- printf "external-secret-%s" .name -}}
@@ -111,7 +111,7 @@ Generate external secret name
 Generate environment slug for Infisical
 */}}
 {{- define "mcp.environmentSlug" -}}
-{{- if .mcp.secret.store.environmentSlug }}
+{{- if and .mcp.secret .mcp.secret.store .mcp.secret.store.environmentSlug }}
   {{- .mcp.secret.store.environmentSlug -}}
 {{- else }}
   {{- .global.environment -}}
@@ -196,7 +196,7 @@ limits:
 Check if service should create secrets
 */}}
 {{- define "mcp.shouldCreateSecret" -}}
-{{- if and .mcp.secret .mcp.secret.create }}
+{{- if and .mcp (kindIs "map" .mcp) .mcp.secret (kindIs "map" .mcp.secret) .mcp.secret.create }}
   {{- true -}}
 {{- else }}
   {{- false -}}
